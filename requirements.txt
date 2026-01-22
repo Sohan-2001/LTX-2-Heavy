@@ -1,0 +1,11 @@
+runpod>=1.6.0
+diffusers>=0.32.0
+transformers>=4.48.0
+accelerate>=1.2.0
+sentencepiece
+protobuf
+moviepy>=1.0.3
+soundfile
+librosa
+imageio-ffmpeg>=0.5.1
+numpy<2.0.0
