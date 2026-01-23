@@ -1,5 +1,7 @@
-# Base image (Has Torch 2.2.0 + CUDA 12.1 pre-installed)
-FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+# --- UPGRADED BASE IMAGE ---
+# We switch to Torch 2.4.0 + CUDA 12.4 + Python 3.11
+# This natively supports the new 'diffusers' features without crashing.
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 # System dependencies
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,13 +18,8 @@ WORKDIR /app
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# --- REMOVED MANUAL TORCH INSTALLATION ---
-# We rely on the base image's Torch to ensure GPU drivers work.
-
 # --- Install requirements ---
 COPY requirements.txt .
-# We use --no-deps for specific packages if needed, but standard install is usually fine 
-# as long as requirements.txt doesn't force a torch upgrade.
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy handler
