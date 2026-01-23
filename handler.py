@@ -138,6 +138,7 @@ def handler(job):
         elif image_b64:
             input_image = Image.open(BytesIO(base64.b64decode(image_b64))).convert("RGB")
 
+        
         with torch.no_grad():
             if input_image:
                 print(f"Running Image-to-Video generation...", flush=True)
@@ -154,16 +155,18 @@ def handler(job):
                 )
             else:
                 print(f"Running Text-to-Video generation...", flush=True)
+                # FIX: 720 is NOT divisible by 32 (720/32 = 22.5). 
+                # We change it to 704 (22 * 32) or 736 (23 * 32).
+                # 704 is safer.
                 output = pipe(
                     prompt=prompt,
                     negative_prompt=negative_prompt,
                     num_frames=num_frames,
-                    height=720,
-                    width=1280,
+                    height=704,    # <--- CHANGED FROM 720
+                    width=1280,    # 1280 is fine (40 * 32)
                     guidance_scale=guidance_scale,
                     num_inference_steps=40
                 )
-
         video_frames = output.frames[0]
         
         # Check for audio output (LTX-Video currently is video-only, but keeping this logic for future)
