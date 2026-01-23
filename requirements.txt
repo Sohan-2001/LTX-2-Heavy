@@ -1,5 +1,6 @@
 runpod>=1.6.0
-diffusers>=0.32.0
+# CHANGE: Install Diffusers directly from GitHub to get LTXVideoPipeline
+git+https://github.com/huggingface/diffusers.git
 transformers>=4.48.0
 accelerate>=1.2.0
 sentencepiece
@@ -9,4 +10,4 @@ soundfile
 librosa
 imageio-ffmpeg>=0.5.1
 numpy<2.0.0
-# REMOVED: torch, torchvision, torchaudio (Use system versions)
+scipy
