@@ -9,3 +9,4 @@ soundfile
 librosa
 imageio-ffmpeg>=0.5.1
 numpy<2.0.0
+# REMOVED: torch, torchvision, torchaudio (Use system versions)

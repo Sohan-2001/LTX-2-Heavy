@@ -19,6 +19,8 @@ try:
     # Pipeline Imports
     from diffusers import DiffusionPipeline
     from diffusers.utils import export_to_video
+    
+    # MOVIEPY FIX: We rely on moviepy==1.0.3 so this import works again
     from moviepy.editor import VideoFileClip, AudioFileClip
 
 except Exception as e:
@@ -30,7 +32,11 @@ except Exception as e:
 # --- CONFIGURATION ---
 VOLUME_CACHE = "/runpod-volume/huggingface-cache"
 OUTPUT_DIR = "/runpod-volume/outputs"
-MODEL_ID = "Lightricks/LTX-2"
+
+# --- CRITICAL FIX: CHANGED MODEL ID ---
+# "Lightricks/LTX-2" is currently broken/incomplete on HF.
+# "Lightricks/LTX-Video" is the correct, stable repository.
+MODEL_ID = "Lightricks/LTX-Video"
 
 # Global Cache
 pipe = None
@@ -38,21 +44,22 @@ pipe = None
 def load_pipeline():
     global pipe
     if pipe is None:
-        print(f"Loading LTX-2 Heavy Model ({MODEL_ID})...", flush=True)
+        print(f"Loading LTX-Video Model ({MODEL_ID})...", flush=True)
         try:
+            # We use from_pretrained with bfloat16 for efficiency
             pipe = DiffusionPipeline.from_pretrained(
                 MODEL_ID,
                 torch_dtype=torch.bfloat16,
                 cache_dir=VOLUME_CACHE,
-                trust_remote_code=True,
-                variant=None 
+                # variant="fp8" # Optional: Use this if you want the FP8 quantized version for speed
             ).to("cuda")
-            print("--- LTX-2 LOADED SUCCESSFULLY ---", flush=True)
+            print("--- LTX-VIDEO LOADED SUCCESSFULLY ---", flush=True)
         except Exception as e:
             print(f"FAILED to load model: {e}")
             raise e
 
 def smart_resize(img):
+    """Resizes image to 1024px-long edge, ensuring dimensions are multiples of 32."""
     width, height = img.size
     aspect_ratio = width / height
     target_long_edge = 1024
@@ -73,6 +80,8 @@ def save_audiovisual_output(video_frames, audio_data, audio_sample_rate, output_
     export_to_video(video_frames, temp_video_path, fps=24)
     
     temp_audio_path = output_path.replace(".mp4", "_temp_audio.wav")
+    
+    # Ensure audio is CPU numpy array
     if torch.is_tensor(audio_data):
         audio_data = audio_data.cpu().numpy()
         
@@ -106,7 +115,6 @@ def handler(job):
     print(f"--- JOB START: {job['id']} ---", flush=True)
     
     # 1. FAIL FAST CHECK
-    # If imports failed, return the error immediately so you can see it in test.py
     if INIT_ERROR:
         return {"error": "Container failed to initialize imports", "traceback": INIT_ERROR}
 
@@ -115,7 +123,7 @@ def handler(job):
         
         job_input = job["input"]
         prompt = job_input.get("prompt", "A cinematic scene")
-        negative_prompt = job_input.get("negative_prompt", "low quality")
+        negative_prompt = job_input.get("negative_prompt", "low quality, worst quality, deformed")
         image_url = job_input.get("image_url", None)
         image_b64 = job_input.get("image_base64", None)
         num_frames = job_input.get("num_frames", 121)
@@ -132,6 +140,7 @@ def handler(job):
 
         with torch.no_grad():
             if input_image:
+                print(f"Running Image-to-Video generation...", flush=True)
                 processed_img, w, h = smart_resize(input_image)
                 output = pipe(
                     image=processed_img,
@@ -144,6 +153,7 @@ def handler(job):
                     num_inference_steps=40
                 )
             else:
+                print(f"Running Text-to-Video generation...", flush=True)
                 output = pipe(
                     prompt=prompt,
                     negative_prompt=negative_prompt,
@@ -156,11 +166,13 @@ def handler(job):
 
         video_frames = output.frames[0]
         
+        # Check for audio output (LTX-Video currently is video-only, but keeping this logic for future)
         if hasattr(output, 'audios') and output.audios is not None:
             audio_data = output.audios[0] 
             sample_rate = getattr(output, 'audio_sampling_rate', 16000)
             save_audiovisual_output(video_frames, audio_data, sample_rate, output_path)
         else:
+            # Silent video export
             export_to_video(video_frames, output_path, fps=24)
 
         with open(output_path, "rb") as f:
@@ -173,9 +185,8 @@ def handler(job):
         traceback.print_exc()
         return {"error": str(e), "traceback": traceback.format_exc()}
 
-# Start the handler
-# If runpod itself fails to import, we can't do anything, but that's rare.
-if 'runpod' in sys.modules:
-    runpod.serverless.start({"handler": handler})
-else:
-    print("CRITICAL: RunPod library not found. Check requirements.txt")
+if __name__ == "__main__":
+    if 'runpod' in sys.modules:
+        runpod.serverless.start({"handler": handler})
+    else:
+        print("CRITICAL: RunPod library not found.")
