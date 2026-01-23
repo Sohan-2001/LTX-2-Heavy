@@ -1,6 +1,4 @@
 runpod>=1.6.0
-# CHANGE: Install Diffusers directly from GitHub to get LTXVideoPipeline
-git+https://github.com/huggingface/diffusers.git
 transformers>=4.48.0
 accelerate>=1.2.0
 sentencepiece
