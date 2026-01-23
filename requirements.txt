@@ -4,7 +4,7 @@ transformers>=4.48.0
 accelerate>=1.2.0
 sentencepiece
 protobuf
-moviepy>=1.0.3
+moviepy==1.0.3
 soundfile
 librosa
 imageio-ffmpeg>=0.5.1
