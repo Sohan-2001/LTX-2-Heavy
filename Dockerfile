@@ -16,19 +16,16 @@ WORKDIR /app
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# --- CRITICAL FIX: PYTORCH 2.5.1 ---
-# Installs Torch 2.5.1 (Required for 'enable_gqa' attention features)
+# --- CRITICAL FIX 1: PYTORCH 2.5.1 ---
 RUN pip install --no-cache-dir \
     torch==2.5.1 \
     torchvision==0.20.1 \
     torchaudio==2.5.1 \
     --index-url https://download.pytorch.org/whl/cu124
 
-# --- CRITICAL FIX: FORCE INSTALL DIFFUSERS FROM GIT ---
-# 1. Uninstall any existing version to prevent conflicts
-# 2. Install directly from GitHub main branch to get LTXVideoPipeline
-RUN pip uninstall -y diffusers || true && \
-    pip install --no-cache-dir git+https://github.com/huggingface/diffusers.git
+# --- CRITICAL FIX 2: FORCE REINSTALL DIFFUSERS ---
+# Added --force-reinstall to guarantee we overwrite the system version
+RUN pip install --force-reinstall --no-cache-dir git+https://github.com/huggingface/diffusers.git
 
 # --- Install other requirements ---
 COPY requirements.txt .
